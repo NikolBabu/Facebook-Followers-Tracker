@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Facebook Followers Tracker</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-8">
+    <div class="max-w-7xl mx-auto">
+        <div class="bg-white rounded-2xl shadow-2xl p-8 mb-8">
+            <h1 class="text-4xl font-bold text-gray-800 mb-2 flex items-center gap-3">
+                📊 Facebook Followers Tracker
+            </h1>
+            <p class="text-gray-600 mb-6">Sledování růstu sledujících na Facebooku po krajích ČR</p>
+
+            <!-- Growth Ranking -->
+            <div id="ranking" class="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-6 mb-8">
+                <h2 class="text-2xl font-semibold text-gray-700 mb-4 flex items-center gap-2">
+                    🏆 Žebříček nejrychlejšího nárůstu
+                </h2>
+                <p id="rankingPeriod" class="text-sm text-gray-600 mb-4"></p>
+                <div id="rankingGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+            </div>
+
+            <!-- Graph -->
+            <div class="bg-gray-50 rounded-xl p-6 mb-8">
+                <h2 class="text-2xl font-semibold text-gray-700 mb-4">Graf vývoje sledujících</h2>
+                <div style="position: relative; height: 400px;">
+                    <canvas id="followersChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Add New Entry Form -->
+            <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 mb-8">
+                <h2 class="text-2xl font-semibold text-gray-700 mb-4 flex items-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                    </svg>
+                    Přidat nový záznam
+                </h2>
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Datum</label>
+                    <input type="date" id="dateInput" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                </div>
+
+                <div id="regionInputs" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6"></div>
+
+                <button onclick="addEntry()" class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 rounded-lg font-semibold hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 flex items-center justify-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                    </svg>
+                    Přidat záznam
+                </button>
+            </div>
+
+            <!-- Data Table -->
+            <div class="bg-gray-50 rounded-xl p-6">
+                <h2 class="text-2xl font-semibold text-gray-700 mb-4">Přehled dat</h2>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm" id="dataTable">
+                        <thead id="tableHead"></thead>
+                        <tbody id="tableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center text-gray-600 text-sm">
+            <p>Vytvořeno pomocí Chart.js • Data jsou uložena lokálně v paměti prohlížeče během relace</p>
+        </div>
+    </div>
+
+    <script>
+        const REGIONS = [
+            'Brno', 'Jihlava', 'Olomouc', 'Zlín', 'Ostrava', 'Pardubice',
+            'Hradec Králové', 'Praha DNES', 'Liberec', 'Ústí nad Labem',
+            'České Budějovice', 'Plzeň'
+        ];
+
+        const COLORS = [
+            '#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899',
+            '#14b8a6', '#f97316', '#6366f1', '#84cc16', '#06b6d4', '#f43f5e'
+        ];
+
+        let data = [
+            {
+                date: '2025-10-08',
+                'Brno': 5392, 'Jihlava': 6076, 'Olomouc': 605, 'Zlín': 991,
+                'Ostrava': 1724, 'Pardubice': 1954, 'Hradec Králové': 1362,
+                'Praha DNES': 1153, 'Liberec': 8901, 'Ústí nad Labem': 1125,
+                'České Budějovice': 13612, 'Plzeň': 1922
+            },
+            {
+                date: '2025-10-22',
+                'Brno': 5722, 'Jihlava': 6474, 'Olomouc': 654, 'Zlín': 994,
+                'Ostrava': 1852, 'Pardubice': 1959, 'Hradec Králové': 1363,
+                'Praha DNES': 1174, 'Liberec': 9073, 'Ústí nad Labem': 1128,
+                'České Budějovice': 14510, 'Plzeň': 2024
+            },
+            {
+                date: '2025-11-06',
+                'Brno': 6096, 'Jihlava': 6726, 'Olomouc': 660, 'Zlín': 996,
+                'Ostrava': 1924, 'Pardubice': 2036, 'Hradec Králové': 1363,
+                'Praha DNES': 1233, 'Liberec': 9647, 'Ústí nad Labem': 1126,
+                'České Budějovice': 14647, 'Plzeň': 2167
+            }
+        ];
+
+        let chart = null;
+
+        function initInputs() {
+            const container = document.getElementById('regionInputs');
+            REGIONS.forEach((region, index) => {
+                const div = document.createElement('div');
+                div.innerHTML = `
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <span class="inline-block w-3 h-3 rounded-full mr-2" style="background-color: ${COLORS[index]}"></span>
+                        ${region}
+                    </label>
+                    <input type="number" id="input-${region}" placeholder="Počet sledujících" 
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function updateChart() {
+            const ctx = document.getElementById('followersChart').getContext('2d');
+            
+            if (chart) {
+                chart.destroy();
+            }
+
+            const datasets = REGIONS.map((region, index) => ({
+                label: region,
+                data: data.map(entry => entry[region]),
+                borderColor: COLORS[index],
+                backgroundColor: COLORS[index] + '20',
+                tension: 0.4
+            }));
+
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.map(entry => entry.date),
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { boxWidth: 12, padding: 10, font: { size: 11 } }
+                        }
+                    },
+                    scales: {
+                        y: { beginAtZero: false }
+                    }
+                }
+            });
+        }
+
+        function updateRanking() {
+            if (data.length < 2) return;
+
+            const lastEntry = data[data.length - 1];
+            const previousEntry = data[data.length - 2];
+
+            document.getElementById('rankingPeriod').textContent = 
+                `Období: ${previousEntry.date} → ${lastEntry.date}`;
+
+            const growthData = REGIONS.map((region, index) => {
+                const current = lastEntry[region] || 0;
+                const previous = previousEntry[region] || 0;
+                const absolute = current - previous;
+                const percentage = previous > 0 ? ((absolute / previous) * 100) : 0;
+
+                return { region, absolute, percentage, color: COLORS[index], current };
+            }).sort((a, b) => b.absolute - a.absolute);
+
+            const grid = document.getElementById('rankingGrid');
+            grid.innerHTML = '';
+
+            growthData.forEach((item, index) => {
+                const medals = ['🥇', '🥈', '🥉'];
+                const div = document.createElement('div');
+                div.className = 'bg-white rounded-lg p-4 shadow-md hover:shadow-lg transition-shadow';
+                div.innerHTML = `
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center gap-2">
+                            <span class="text-2xl font-bold text-gray-400">#${index + 1}</span>
+                            <span class="inline-block w-4 h-4 rounded-full" style="background-color: ${item.color}"></span>
+                        </div>
+                        ${index < 3 ? `<span class="text-2xl">${medals[index]}</span>` : ''}
+                    </div>
+                    <h3 class="font-semibold text-gray-800 mb-2">${item.region}</h3>
+                    <div class="space-y-1">
+                        <p class="text-sm text-gray-600">
+                            Nárůst: <span class="font-bold ${item.absolute >= 0 ? 'text-green-600' : 'text-red-600'}">
+                                ${item.absolute >= 0 ? '+' : ''}${item.absolute.toLocaleString('cs-CZ')}
+                            </span>
+                        </p>
+                        <p class="text-sm text-gray-600">
+                            Procenta: <span class="font-bold ${item.percentage >= 0 ? 'text-green-600' : 'text-red-600'}">
+                                ${item.percentage >= 0 ? '+' : ''}${item.percentage.toFixed(2)}%
+                            </span>
+                        </p>
+                        <p class="text-xs text-gray-500">
+                            Aktuálně: ${item.current.toLocaleString('cs-CZ')} sledujících
+                        </p>
+                    </div>
+                `;
+                grid.appendChild(div);
+            });
+        }
+
+        function updateTable() {
+            const thead = document.getElementById('tableHead');
+            const tbody = document.getElementById('tableBody');
+
+            thead.innerHTML = `
+                <tr class="border-b-2 border-gray-300">
+                    <th class="text-left py-3 px-4 font-semibold text-gray-700">Datum</th>
+                    ${REGIONS.map((region, index) => `
+                        <th class="text-right py-3 px-4 font-semibold text-gray-700">
+                            <span class="inline-block w-3 h-3 rounded-full mr-1" style="background-color: ${COLORS[index]}"></span>
+                            ${region.split(' ').pop()}
+                        </th>
+                    `).join('')}
+                    <th class="text-center py-3 px-4 font-semibold text-gray-700">Akce</th>
+                </tr>
+            `;
+
+            tbody.innerHTML = data.map((entry, index) => `
+                <tr class="border-b border-gray-200 hover:bg-gray-100">
+                    <td class="py-3 px-4 font-medium">${entry.date}</td>
+                    ${REGIONS.map(region => `
+                        <td class="text-right py-3 px-4">${(entry[region] || 0).toLocaleString('cs-CZ')}</td>
+                    `).join('')}
+                    <td class="text-center py-3 px-4">
+                        <button onclick="deleteEntry(${index})" class="text-red-600 hover:text-red-800 transition-colors" title="Smazat záznam">
+                            <svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function addEntry() {
+            const date = document.getElementById('dateInput').value;
+            if (!date) {
+                alert('Prosím vyplňte datum');
+                return;
+            }
+
+            const newEntry = { date };
+            REGIONS.forEach(region => {
+                const value = document.getElementById(`input-${region}`).value;
+                newEntry[region] = value ? parseInt(value) : 0;
+            });
+
+            data.push(newEntry);
+            data.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+            // Reset form
+            document.getElementById('dateInput').value = '';
+            REGIONS.forEach(region => {
+                document.getElementById(`input-${region}`).value = '';
+            });
+
+            updateAll();
+        }
+
+        function deleteEntry(index) {
+            data.splice(index, 1);
+            updateAll();
+        }
+
+        function updateAll() {
+            updateChart();
+            updateRanking();
+            updateTable();
+        }
+
+        // Initialize
+        initInputs();
+        updateAll();
+    </script>
+</body>
+</html>
